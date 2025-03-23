@@ -29,7 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type VideoProvider } from "./VideoProvider";
 import { default as ScreenShare } from './ScreenShare';
 
 interface VideoPlayerProps {
