@@ -141,7 +141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case 'like':
           case 'reaction':
           case 'screenShare':
-            // Forward these events to all clients in room
+          case 'ice-candidate':
+            // Forward these WebRTC events to all clients in room
             broadcastToRoom(data.payload.roomCode, data);
             break;
             
