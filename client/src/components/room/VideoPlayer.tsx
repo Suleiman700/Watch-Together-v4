@@ -29,6 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ScreenShare from "@/components/room/ScreenShare.tsx";
 
 interface VideoPlayerProps {
   roomCode: string;
