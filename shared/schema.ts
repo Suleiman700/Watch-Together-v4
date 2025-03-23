@@ -97,6 +97,6 @@ export type VideoState = {
 };
 
 export type WebSocketMessage = {
-  type: "join" | "leave" | "message" | "sync" | "play" | "pause" | "seek" | "updateVideo" | "like" | "session" | "error" | "reaction" | "kick" | "transferHost";
+  type: "join" | "leave" | "message" | "sync" | "play" | "pause" | "seek" | "updateVideo" | "like" | "session" | "error" | "reaction" | "kick" | "transferHost" | "screenShare" | "ice-candidate";
   payload: any;
 };
