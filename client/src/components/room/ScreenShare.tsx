@@ -12,10 +12,11 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    const handleScreenShare = async (data: any) => {
+    const handleMessage = async (e: any) => {
+      const data = e.detail;
+
       if (data.type === 'screenShare') {
-        if (data.payload.enabled) {
-          // Create new RTCPeerConnection for receiving
+        if (data.payload.enabled && data.payload.offer) {
           const peerConnection = new RTCPeerConnection();
           
           peerConnection.ontrack = (event) => {
@@ -34,37 +35,49 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             }
           };
 
-          // Handle ICE candidates
-          peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              sendMessage({
-                type: 'ice-candidate',
-                payload: {
-                  roomCode,
-                  candidate: event.candidate
-                }
-              });
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+
+          sendMessage({
+            type: 'screenShare',
+            payload: {
+              roomCode,
+              answer,
+              enabled: true
             }
-          };
+          });
 
           peerConnections.set(data.payload.sessionId, peerConnection);
-        } else {
+        } else if (data.payload.answer) {
+          const peerConnection = peerConnections.get(data.payload.sessionId);
+          if (peerConnection) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.answer));
+          }
+        } else if (!data.payload.enabled) {
           const container = document.querySelector('.screen-share-container');
           if (container) {
             container.innerHTML = '';
           }
+          peerConnections.clear();
+        }
+      } else if (data.type === 'ice-candidate' && data.payload.candidate) {
+        const peerConnection = peerConnections.get(data.payload.sessionId);
+        if (peerConnection) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data.payload.candidate));
         }
       }
     };
 
-    // Subscribe to WebSocket messages
-    window.addEventListener('websocket-message', (e: any) => handleScreenShare(e.detail));
+    window.addEventListener('websocket-message', handleMessage);
     
     return () => {
-      window.removeEventListener('websocket-message', handleScreenShare);
+      window.removeEventListener('websocket-message', handleMessage);
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      peerConnections.forEach(pc => pc.close());
+      peerConnections.clear();
     };
   }, [roomCode, stream]);
 
@@ -77,15 +90,24 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
       
       setStream(mediaStream);
 
-      // Create peer connections for each participant
       const peerConnection = new RTCPeerConnection();
       
-      // Add tracks to the peer connection
       mediaStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, mediaStream);
       });
 
-      // Create and send offer
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendMessage({
+            type: 'ice-candidate',
+            payload: {
+              roomCode,
+              candidate: event.candidate
+            }
+          });
+        }
+      };
+
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
@@ -113,6 +135,9 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+
+    peerConnections.forEach(pc => pc.close());
+    peerConnections.clear();
 
     sendMessage({
       type: 'screenShare',
