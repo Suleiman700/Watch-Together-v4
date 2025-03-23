@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { type VideoProvider } from "./VideoProvider";
-import ScreenShare from './ScreenShare';
+import { default as ScreenShare } from './ScreenShare';
 
 interface VideoPlayerProps {
   roomCode: string;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Monitor, Mic, MicOff } from "lucide-react";
@@ -18,7 +17,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
       if (data.type === 'screenShare') {
         if (data.payload.enabled && data.payload.offer) {
           const peerConnection = new RTCPeerConnection();
-          
+
           peerConnection.ontrack = (event) => {
             const [remoteStream] = event.streams;
             const videoElement = document.createElement('video');
@@ -27,7 +26,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             videoElement.id = 'shared-screen';
             videoElement.style.width = '100%';
             videoElement.style.height = 'auto';
-            
+
             const container = document.querySelector('.screen-share-container');
             if (container) {
               container.innerHTML = '';
@@ -44,7 +43,8 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             payload: {
               roomCode,
               answer,
-              enabled: true
+              enabled: true,
+              sessionId: data.payload.sessionId
             }
           });
 
@@ -70,7 +70,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
     };
 
     window.addEventListener('websocket-message', handleMessage);
-    
+
     return () => {
       window.removeEventListener('websocket-message', handleMessage);
       if (stream) {
@@ -87,22 +87,25 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
         video: true,
         audio: audioEnabled
       });
-      
+
       setStream(mediaStream);
 
       const peerConnection = new RTCPeerConnection();
-      
+      const sessionId = Math.random().toString(36).substring(7);
+
       mediaStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, mediaStream);
       });
 
+      // Send any ICE candidates to other peers
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           sendMessage({
             type: 'ice-candidate',
             payload: {
               roomCode,
-              candidate: event.candidate
+              candidate: event.candidate,
+              sessionId: sessionId
             }
           });
         }
@@ -116,7 +119,8 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
         payload: {
           roomCode,
           enabled: true,
-          offer
+          offer,
+          sessionId: sessionId
         }
       });
 
@@ -148,7 +152,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
     });
 
     setIsSharing(false);
-    
+
     const container = document.querySelector('.screen-share-container');
     if (container) {
       container.innerHTML = '';
@@ -166,7 +170,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
           <Monitor className="h-4 w-4 mr-2" />
           {isSharing ? "Stop Sharing" : "Share Screen"}
         </Button>
-        
+
         <Button
           variant="ghost"
           size="icon"
