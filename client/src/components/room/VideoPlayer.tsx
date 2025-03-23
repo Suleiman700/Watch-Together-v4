@@ -372,12 +372,15 @@ export default function VideoPlayer({ roomCode }: VideoPlayerProps) {
             </div>
             
             {/* Play button */}
-            <Button 
-              onClick={handleAddVideo}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 w-full"
-            >
-              Play Video
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleAddVideo}
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 flex-1"
+              >
+                Play Video
+              </Button>
+              <ScreenShare roomCode={roomCode} />
+            </div>
           </div>
         </CardContent>
       </Card>

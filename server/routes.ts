@@ -140,6 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case 'seek':
           case 'like':
           case 'reaction':
+          case 'screenShare':
             // Forward these events to all clients in room
             broadcastToRoom(data.payload.roomCode, data);
             break;
