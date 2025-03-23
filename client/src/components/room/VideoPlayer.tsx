@@ -242,7 +242,7 @@ export default function VideoPlayer({ roomCode }: VideoPlayerProps) {
   return (
     <div className="flex flex-col">
       <div className="bg-black aspect-video relative">
-        <div id="screen-share-video-container" className="absolute inset-0 z-20"></div>
+        <div id="screen-share-video-container" className="absolute inset-0 z-20 w-full h-full"></div>
         {/* Like emoji animation */}
         {showLikeEmoji && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">

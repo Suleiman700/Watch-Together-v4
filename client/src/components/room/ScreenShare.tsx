@@ -25,7 +25,8 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             videoElement.autoplay = true;
             videoElement.id = 'shared-screen';
             videoElement.style.width = '100%';
-            videoElement.style.height = 'auto';
+            videoElement.style.height = '100%';
+            videoElement.style.objectFit = 'contain';
 
             const container = document.querySelector('#screen-share-video-container');
             if (container) {
