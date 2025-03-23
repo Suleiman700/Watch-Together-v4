@@ -27,7 +27,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             videoElement.style.width = '100%';
             videoElement.style.height = 'auto';
 
-            const container = document.querySelector('.screen-share-container');
+            const container = document.querySelector('#screen-share-video-container');
             if (container) {
               container.innerHTML = '';
               container.appendChild(videoElement);
@@ -55,7 +55,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.answer));
           }
         } else if (!data.payload.enabled) {
-          const container = document.querySelector('.screen-share-container');
+          const container = document.querySelector('#screen-share-video-container');
           if (container) {
             container.innerHTML = '';
           }
@@ -153,7 +153,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
 
     setIsSharing(false);
 
-    const container = document.querySelector('.screen-share-container');
+    const container = document.querySelector('#screen-share-video-container');
     if (container) {
       container.innerHTML = '';
     }
@@ -184,7 +184,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
           )}
         </Button>
       </div>
-      <div className="screen-share-container mt-4"></div>
+      <div id="screen-share-video-container" className="mt-4"></div>
     </>
   );
 }
