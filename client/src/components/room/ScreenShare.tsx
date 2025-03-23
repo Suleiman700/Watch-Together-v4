@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Monitor, Mic, MicOff } from "lucide-react";
@@ -12,12 +11,13 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    const handleScreenShare = async (data: any) => {
+    const handleMessage = async (e: any) => {
+      const data = e.detail;
+
       if (data.type === 'screenShare') {
-        if (data.payload.enabled) {
-          // Create new RTCPeerConnection for receiving
+        if (data.payload.enabled && data.payload.offer) {
           const peerConnection = new RTCPeerConnection();
-          
+
           peerConnection.ontrack = (event) => {
             const [remoteStream] = event.streams;
             const videoElement = document.createElement('video');
@@ -25,46 +25,60 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
             videoElement.autoplay = true;
             videoElement.id = 'shared-screen';
             videoElement.style.width = '100%';
-            videoElement.style.height = 'auto';
-            
-            const container = document.querySelector('.screen-share-container');
+            videoElement.style.height = '100%';
+            videoElement.style.objectFit = 'contain';
+
+            const container = document.querySelector('#screen-share-video-container');
             if (container) {
               container.innerHTML = '';
               container.appendChild(videoElement);
             }
           };
 
-          // Handle ICE candidates
-          peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              sendMessage({
-                type: 'ice-candidate',
-                payload: {
-                  roomCode,
-                  candidate: event.candidate
-                }
-              });
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+
+          sendMessage({
+            type: 'screenShare',
+            payload: {
+              roomCode,
+              answer,
+              enabled: true,
+              sessionId: data.payload.sessionId
             }
-          };
+          });
 
           peerConnections.set(data.payload.sessionId, peerConnection);
-        } else {
-          const container = document.querySelector('.screen-share-container');
+        } else if (data.payload.answer) {
+          const peerConnection = peerConnections.get(data.payload.sessionId);
+          if (peerConnection) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.answer));
+          }
+        } else if (!data.payload.enabled) {
+          const container = document.querySelector('#screen-share-video-container');
           if (container) {
             container.innerHTML = '';
           }
+          peerConnections.clear();
+        }
+      } else if (data.type === 'ice-candidate' && data.payload.candidate) {
+        const peerConnection = peerConnections.get(data.payload.sessionId);
+        if (peerConnection) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data.payload.candidate));
         }
       }
     };
 
-    // Subscribe to WebSocket messages
-    window.addEventListener('websocket-message', (e: any) => handleScreenShare(e.detail));
-    
+    window.addEventListener('websocket-message', handleMessage);
+
     return () => {
-      window.removeEventListener('websocket-message', handleScreenShare);
+      window.removeEventListener('websocket-message', handleMessage);
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      peerConnections.forEach(pc => pc.close());
+      peerConnections.clear();
     };
   }, [roomCode, stream]);
 
@@ -74,18 +88,30 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
         video: true,
         audio: audioEnabled
       });
-      
+
       setStream(mediaStream);
 
-      // Create peer connections for each participant
       const peerConnection = new RTCPeerConnection();
-      
-      // Add tracks to the peer connection
+      const sessionId = Math.random().toString(36).substring(7);
+
       mediaStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, mediaStream);
       });
 
-      // Create and send offer
+      // Send any ICE candidates to other peers
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendMessage({
+            type: 'ice-candidate',
+            payload: {
+              roomCode,
+              candidate: event.candidate,
+              sessionId: sessionId
+            }
+          });
+        }
+      };
+
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
@@ -94,7 +120,8 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
         payload: {
           roomCode,
           enabled: true,
-          offer
+          offer,
+          sessionId: sessionId
         }
       });
 
@@ -114,6 +141,9 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
       setStream(null);
     }
 
+    peerConnections.forEach(pc => pc.close());
+    peerConnections.clear();
+
     sendMessage({
       type: 'screenShare',
       payload: {
@@ -123,8 +153,8 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
     });
 
     setIsSharing(false);
-    
-    const container = document.querySelector('.screen-share-container');
+
+    const container = document.querySelector('#screen-share-video-container');
     if (container) {
       container.innerHTML = '';
     }
@@ -141,7 +171,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
           <Monitor className="h-4 w-4 mr-2" />
           {isSharing ? "Stop Sharing" : "Share Screen"}
         </Button>
-        
+
         <Button
           variant="ghost"
           size="icon"
@@ -155,7 +185,7 @@ export default function ScreenShare({ roomCode }: { roomCode: string }) {
           )}
         </Button>
       </div>
-      <div className="screen-share-container mt-4"></div>
+      <div id="screen-share-video-container" className="mt-4"></div>
     </>
   );
 }
